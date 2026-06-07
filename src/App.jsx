@@ -1325,7 +1325,7 @@ function PlanningTab() {
     setLoading(true)
     const [{ data: mp }, { data: uh }, { data: rec }] = await Promise.all([
       supabase.from('meal_plan').select('*').order('planned_date'),
-      supabase.from('usage_history').select('*').order('cooked_at', { ascending: false }),
+      supabase.from('usage_history').select('*').order('used_at', { ascending: false }),
       supabase.from('recipes').select('id,name,recipe_ingredients(quantity,unit,items(name))').order('name'),
     ])
     setMealPlan(mp || [])
@@ -1343,7 +1343,7 @@ function PlanningTab() {
 
   const mealsForDay = (iso) => ({
     planned: mealPlan.filter(m => m.planned_date === iso),
-    cooked:  history.filter(h => (h.cooked_at || '').slice(0,10) === iso),
+    cooked:  history.filter(h => (h.used_at || '').slice(0,10) === iso),
   })
 
   const openDay = (day) => {
@@ -1416,7 +1416,7 @@ function PlanningTab() {
         }
       }
       // Démarquer "cuisiné" dans meal_plan si la date correspond
-      const cookedDate = (h.cooked_at || '').slice(0,10)
+      const cookedDate = (h.used_at || '').slice(0,10)
       const matching = mealPlan.find(m => m.recipe_id === h.recipe_id && m.cooked && m.planned_date === cookedDate)
       if (matching) await supabase.from('meal_plan').update({ cooked: false }).eq('id', matching.id)
     }
@@ -1497,7 +1497,7 @@ function PlanningTab() {
               <div key={h.id} className="plan-row cooked">
                 <div className="plan-left">
                   <span className="plan-recipe">{h.recipe_name}</span>
-                  {h.cooked_at && <span className="plan-time">{new Date(h.cooked_at).toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit'})}</span>}
+                  {h.used_at && <span className="plan-time">{new Date(h.used_at).toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit'})}</span>}
                 </div>
                 <div className="plan-acts">
                   <button className="icon-btn sm danger" title="Annuler — remet les ingrédients dans le stock" onClick={() => undoCook(h)}>
@@ -1599,7 +1599,7 @@ function HistoriqueTab() {
     const { data } = await supabase
       .from('usage_history')
       .select('*')
-      .order('cooked_at', { ascending: false })
+      .order('used_at', { ascending: false })
     setHistory(data || [])
     setLoading(false)
   }, [])
@@ -1621,7 +1621,7 @@ function HistoriqueTab() {
         }
       }
       // Démarquer dans meal_plan si possible
-      const cookedDate = (h.cooked_at || '').slice(0,10)
+      const cookedDate = (h.used_at || '').slice(0,10)
       const { data: mp } = await supabase
         .from('meal_plan')
         .select('id')
@@ -1638,7 +1638,7 @@ function HistoriqueTab() {
   // Grouper par date
   const grouped = {}
   for (const h of history) {
-    const date = (h.cooked_at || '').slice(0,10)
+    const date = (h.used_at || '').slice(0,10)
     if (!grouped[date]) grouped[date] = []
     grouped[date].push(h)
   }
@@ -1668,9 +1668,9 @@ function HistoriqueTab() {
                   <div key={h.id} className="hist-row">
                     <div className="hist-left">
                       <span className="hist-name">{h.recipe_name}</span>
-                      {h.cooked_at && (
+                      {h.used_at && (
                         <span className="hist-date">
-                          {new Date(h.cooked_at).toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' })}
+                          {new Date(h.used_at).toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' })}
                         </span>
                       )}
                     </div>
