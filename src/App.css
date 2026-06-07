@@ -303,6 +303,156 @@ body {
 .badge.low   { background: var(--terra-l); color: var(--terra); }
 .badge.empty { background: #FEF2F2; color: #C0392B; }
 
+.card-price { font-size: 12px; font-weight: 600; color: var(--stone); }
+
+/* ── CONDITIONNEMENT ── */
+.pack-section {
+  background: var(--cream); border-radius: var(--r-sm);
+  padding: 12px; display: flex; flex-direction: column; gap: 8px;
+  border: 1px dashed var(--border);
+}
+.pack-label-row { display: flex; align-items: center; gap: 8px; }
+.pack-hint { font-size: 11px; color: var(--stone); font-weight: 400; text-transform: none; letter-spacing: 0; }
+.pack-row { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.pack-text { font-size: 13px; color: var(--stone); font-weight: 500; flex-shrink: 0; }
+.pack-input-label {
+  flex: 1; min-width: 100px; border: 1.5px solid var(--border);
+  border-radius: var(--r-sm); padding: 8px 10px; font-size: 14px;
+  font-family: 'DM Sans', sans-serif; color: var(--ink); background: var(--white); outline: none;
+}
+.pack-input-label:focus { border-color: var(--green); }
+.pack-input-size {
+  width: 72px; flex-shrink: 0; border: 1.5px solid var(--border);
+  border-radius: var(--r-sm); padding: 8px 10px; font-size: 14px;
+  font-family: 'DM Sans', sans-serif; color: var(--ink); background: var(--white); outline: none;
+}
+.pack-input-size:focus { border-color: var(--green); }
+
+/* ── OPEN FOOD FACTS ── */
+.off-wrap { display: flex; flex-direction: column; gap: 0; position: relative; }
+.off-bar {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--white); border: 1.5px solid var(--green);
+  border-radius: var(--r); padding: 9px 12px; color: var(--stone);
+}
+.off-input {
+  flex: 1; border: none; outline: none;
+  font-size: 14px; font-family: 'DM Sans', sans-serif;
+  background: none; color: var(--ink);
+}
+.off-input::placeholder { color: var(--stone); }
+.off-scan-btn {
+  font-size: 19px; line-height: 1; border: none; background: none;
+  cursor: pointer; padding: 0 2px; flex-shrink: 0;
+  transition: transform .15s;
+}
+.off-scan-btn:hover { transform: scale(1.15); }
+
+.off-results {
+  position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+  background: var(--white); border: 1px solid var(--border);
+  border-radius: var(--r); box-shadow: var(--shadow2);
+  z-index: 100; overflow: hidden;
+}
+.off-result-row {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%; padding: 10px 13px;
+  border: none; border-bottom: 1px solid var(--border);
+  background: none; cursor: pointer; text-align: left;
+  font-family: 'DM Sans', sans-serif;
+  transition: background .12s;
+}
+.off-result-row:last-child { border-bottom: none; }
+.off-result-row:hover { background: var(--green-l); }
+.off-img { width: 38px; height: 38px; object-fit: contain; border-radius: 6px; flex-shrink: 0; }
+.off-img-ph { width: 38px; height: 38px; background: var(--cream2); border-radius: 6px; flex-shrink: 0; }
+.off-result-info { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.off-result-name { font-size: 13.5px; font-weight: 500; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.off-result-qty  { font-size: 11.5px; color: var(--stone); }
+
+.new-stock-unit-hint {
+  background: #FFF9E6; border: 1px solid #F4D03F;
+  border-radius: var(--r-sm); padding: 10px 13px;
+  font-size: 13px; color: #7D6608; line-height: 1.55;
+}
+.new-stock-unit-hint em { font-style: normal; }
+
+.pack-explainer {
+  font-size: 12.5px; color: var(--stone); line-height: 1.5;
+}
+.pack-explainer em { color: var(--stone); font-style: italic; }
+
+.pack-preview {
+  background: var(--green-l); color: var(--green-d);
+  border-radius: var(--r-sm); padding: 9px 12px;
+  font-size: 13px; line-height: 1.45;
+}
+
+.shop-pack-info {
+  font-size: 11.5px; color: var(--stone); margin-top: 3px;
+  display: flex; align-items: center; gap: 5px; flex-wrap: wrap;
+}
+.shop-pack-suggest { color: var(--green); }
+
+/* ── CATEGORY BUTTON ── */
+.btn-cat {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: var(--terra-l); color: var(--terra);
+  border: 1.5px solid var(--terra); border-radius: var(--r);
+  padding: 9px 13px; font-size: 13px; font-weight: 600;
+  font-family: 'DM Sans', sans-serif; cursor: pointer; white-space: nowrap;
+  transition: all .15s; flex-shrink: 0;
+}
+.btn-cat:hover { background: var(--terra); color: #fff; }
+
+/* ── VIEW TOGGLE ── */
+.view-toggle { display: flex; border: 1px solid var(--border); border-radius: var(--r-sm); overflow: hidden; flex-shrink: 0; }
+.view-btn {
+  display: flex; align-items: center; justify-content: center;
+  padding: 8px 10px; border: none; background: none; cursor: pointer;
+  color: var(--stone); transition: all .15s;
+}
+.view-btn.on { background: var(--green); color: #fff; }
+
+/* ── LIST VIEW ── */
+.list-view { display: flex; flex-direction: column; gap: 7px; }
+.list-item {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--white); border-radius: var(--r-sm);
+  padding: 12px 14px; border: 1px solid var(--border);
+  border-left: 3px solid transparent;
+  box-shadow: var(--shadow); transition: box-shadow .15s;
+}
+.list-item:hover { box-shadow: var(--shadow2); }
+.list-item.s-ok    { border-left-color: var(--green); }
+.list-item.s-low   { border-left-color: var(--terra); }
+.list-item.s-empty { border-left-color: #C0392B; }
+
+.list-left  { flex: 1; min-width: 0; }
+.list-name  { font-size: 14px; font-weight: 600; color: var(--ink); }
+.list-meta  { display: flex; align-items: center; gap: 7px; margin-top: 2px; }
+.list-cat   { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .4px; color: var(--stone); }
+.list-mid   { flex-shrink: 0; text-align: right; }
+.list-qty   { font-family: 'Cormorant Garamond', serif; font-size: 20px; font-weight: 700; color: var(--ink); }
+.list-unit  { font-size: 12px; color: var(--stone); font-family: 'DM Sans', sans-serif; }
+.list-spark { flex-shrink: 0; }
+.list-acts  { display: flex; gap: 5px; flex-shrink: 0; }
+
+/* ── SPARKLINE ── */
+.spark-wrap   { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.spark-footer { display: flex; align-items: center; gap: 5px; }
+.spark-price  { font-size: 11px; font-weight: 700; color: var(--ink); }
+.spark-delta  { font-size: 10px; font-weight: 700; }
+.spark-empty  { font-size: 12px; color: var(--border); }
+
+/* ── RECIPE TYPE BADGE ── */
+.recipe-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 3px; }
+.recipe-type-badge {
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px;
+  background: var(--cream2); color: var(--stone);
+  padding: 2px 9px; border-radius: 10px; flex-shrink: 0;
+}
+
 /* ── RECIPES ── */
 .recipe-list { display: flex; flex-direction: column; gap: 10px; }
 
@@ -387,6 +537,21 @@ body {
   font-family: 'Cormorant Garamond', serif;
   font-size: 22px; font-weight: 600; color: var(--ink);
 }
+.cook-summary {
+  width: 100%; display: flex; flex-direction: column; gap: 6px;
+  background: var(--cream); border-radius: var(--r-sm);
+  padding: 12px; margin-top: 4px;
+}
+.cook-summary-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+}
+.cook-summary-name { font-size: 13.5px; font-weight: 600; color: var(--ink); flex: 1; }
+.cook-summary-change { display: flex; align-items: center; gap: 5px; font-size: 13px; }
+.cook-before { color: var(--stone); }
+.cook-arrow  { color: var(--stone); font-size: 11px; }
+.cook-after  { font-weight: 700; color: var(--green); }
+.cook-after.zero { color: #C0392B; }
+.cook-used   { font-size: 11px; color: var(--terra); font-weight: 600; }
 
 /* ── SHOPPING ── */
 .shop-list { display: flex; flex-direction: column; gap: 16px; }
@@ -432,6 +597,8 @@ body {
   cursor: pointer; white-space: nowrap; transition: all .15s;
 }
 .restock-btn:hover { background: var(--green); color: #fff; }
+.restock-btn.new { background: var(--terra-l); color: var(--terra); }
+.restock-btn.new:hover { background: var(--terra); color: #fff; }
 
 /* ── SHOPPING V2 ── */
 .shop-summary {
@@ -458,8 +625,28 @@ body {
   font-size: 12px; font-weight: 700; letter-spacing: .3px;
   padding: 8px 4px 6px; color: var(--stone);
 }
-.shop-section-title.urgent { color: #C0392B; }
+.shop-section-title.urgent  { color: #C0392B; }
 .shop-section-title.warning { color: #B45309; }
+.shop-section-title.manual  { color: var(--green); }
+
+/* ── AJOUT MANUEL ── */
+.add-suggestions {
+  display: flex; flex-direction: column; gap: 5px;
+  border-top: 1px solid var(--border); padding-top: 12px;
+}
+.add-suggestion-row {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--cream); border: 1px solid var(--border);
+  border-radius: var(--r-sm); padding: 10px 13px;
+  cursor: pointer; font-family: 'DM Sans', sans-serif;
+  transition: all .15s; text-align: left;
+}
+.add-suggestion-row:hover { background: var(--green-l); border-color: var(--green); color: var(--green-d); }
+.add-sug-left { flex: 1; display: flex; flex-direction: column; gap: 2px; text-align: left; }
+.add-sug-name { font-size: 14px; font-weight: 500; color: var(--ink); }
+.add-sug-pack { font-size: 11px; color: var(--stone); }
+.add-sug-qty  { font-size: 12px; color: var(--stone); flex-shrink: 0; }
+.shop-item2.manual { border-left-color: var(--green); }
 
 .shop-item2 {
   display: flex; align-items: center; gap: 12px;
@@ -496,6 +683,38 @@ body {
   font-size: 12px; font-weight: 700; color: var(--green);
   background: var(--green-l); padding: 2px 8px; border-radius: 8px;
   white-space: nowrap;
+}
+
+/* ── RESTOCK MODAL ── */
+.restock-item-name {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 22px; font-weight: 700; color: var(--ink);
+}
+.restock-current {
+  font-size: 14px; color: var(--stone);
+  background: var(--cream); border-radius: var(--r-sm);
+  padding: 9px 13px;
+}
+.restock-pack-hint {
+  font-size: 11.5px; color: var(--stone); font-weight: 400;
+  text-transform: none; letter-spacing: 0; margin-top: 3px;
+}
+.restock-preview {
+  background: var(--green-l); border-radius: var(--r-sm);
+  padding: 12px 14px; display: flex; flex-direction: column; gap: 4px;
+  border: 1px solid rgba(61,107,79,.2);
+}
+.restock-calc {
+  display: flex; align-items: baseline; gap: 5px; flex-wrap: wrap;
+}
+.restock-calc-old  { font-size: 15px; color: var(--stone); }
+.restock-calc-op   { font-size: 14px; color: var(--stone); }
+.restock-calc-new  {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 26px; font-weight: 700; color: var(--green);
+}
+.restock-calc-detail {
+  font-size: 12px; color: var(--green-d); opacity: .75;
 }
 
 /* ── EMPTY / LOADING ── */
