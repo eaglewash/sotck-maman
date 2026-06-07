@@ -967,6 +967,11 @@ body {
 .plan-time  { font-size: 12px; color: var(--stone); flex-shrink: 0; }
 .plan-acts  { display: flex; gap: 4px; flex-shrink: 0; }
 .plan-empty { text-align: center; color: var(--stone); font-size: 14px; padding: 12px 0; }
+.plan-ings { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.plan-ing-tag {
+  font-size: 11px; background: var(--cream2); color: var(--stone);
+  border-radius: 6px; padding: 2px 7px; font-weight: 500;
+}
 .plan-add-form {
   background: var(--cream); border-radius: var(--r-sm);
   padding: 14px; display: flex; flex-direction: column; gap: 10px;

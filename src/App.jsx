@@ -1325,7 +1325,7 @@ function PlanningTab() {
     const [{ data: mp }, { data: uh }, { data: rec }] = await Promise.all([
       supabase.from('meal_plan').select('*').order('planned_date'),
       supabase.from('usage_history').select('*').order('cooked_at', { ascending: false }),
-      supabase.from('recipes').select('id,name').order('name'),
+      supabase.from('recipes').select('id,name,recipe_ingredients(quantity,unit,items(name))').order('name'),
     ])
     setMealPlan(mp || [])
     setHistory(uh || [])
@@ -1374,6 +1374,27 @@ function PlanningTab() {
   }
 
   const markCooked = async (meal) => {
+    // Déduire les ingrédients du stock si la recette est connue
+    if (meal.recipe_id) {
+      const { data: ings } = await supabase
+        .from('recipe_ingredients')
+        .select('*, items(*)')
+        .eq('recipe_id', meal.recipe_id)
+      if (ings) {
+        for (const ri of ings) {
+          if (ri.items) {
+            const after = Math.max(0, ri.items.quantity - ri.quantity)
+            await supabase.from('items').update({ quantity: after }).eq('id', ri.item_id)
+          }
+        }
+      }
+    }
+    // Enregistrer dans l'historique
+    await supabase.from('usage_history').insert([{
+      recipe_id: meal.recipe_id || null,
+      recipe_name: meal.recipe_name,
+    }])
+    // Marquer comme cuisiné dans le planning
     await supabase.from('meal_plan').update({ cooked: true }).eq('id', meal.id)
     load()
   }
@@ -1457,11 +1478,20 @@ function PlanningTab() {
 
           {dayMeals.planned.length > 0 && <>
             <div className="section-label">📅 Planifié</div>
-            {dayMeals.planned.map(m => (
+            {dayMeals.planned.map(m => {
+              const recipeData = m.recipe_id ? recipes.find(r => r.id === m.recipe_id) : null
+              return (
               <div key={m.id} className={`plan-row ${m.cooked?'cooked':''}`}>
                 <div className="plan-left">
                   <span className="plan-recipe">{m.recipe_name}</span>
                   <span className="plan-type">{m.meal_type}</span>
+                  {recipeData?.recipe_ingredients?.length > 0 && (
+                    <div className="plan-ings">
+                      {recipeData.recipe_ingredients.map((ri, i) => (
+                        <span key={i} className="plan-ing-tag">{ri.items?.name} · {ri.quantity}{ri.unit}</span>
+                      ))}
+                    </div>
+                  )}
                   {m.notes && <span className="plan-notes">{m.notes}</span>}
                 </div>
                 <div className="plan-acts">
@@ -1471,7 +1501,8 @@ function PlanningTab() {
                   <button className="icon-btn sm danger" onClick={() => deletePlan(m.id)}><I d={IC.trash} s={13} /></button>
                 </div>
               </div>
-            ))}
+            )})}
+
           </>}
 
           {dayMeals.cooked.length === 0 && dayMeals.planned.length === 0 && (
