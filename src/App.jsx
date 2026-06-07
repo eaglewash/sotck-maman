@@ -1420,11 +1420,10 @@ function PlanningTab() {
                   <span className="cal-day-num">{day}</span>
                   {total > 0 && (
                     <div className="cal-cell-meals">
-                      {cooked.slice(0,1).map(h => <span key={h.id} className="cal-meal-tag cooked">{h.recipe_name}</span>)}
-                      {planned.slice(0, cooked.length > 0 ? 0 : 1).map(m => (
+                      {cooked.map(h => <span key={h.id} className="cal-meal-tag cooked">{h.recipe_name}</span>)}
+                      {planned.map(m => (
                         <span key={m.id} className={`cal-meal-tag planned ${m.cooked?'done':''}`}>{m.recipe_name}</span>
                       ))}
-                      {total > 1 && <span className="cal-meal-more">+{total - 1}</span>}
                     </div>
                   )}
                 </div>

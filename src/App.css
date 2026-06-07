@@ -912,10 +912,9 @@ body {
 .cal-cell {
   background: var(--white); border-radius: var(--r-sm);
   border: 1.5px solid var(--border); padding: 6px 5px 7px;
-  cursor: pointer; min-height: 58px;
+  cursor: pointer; min-height: 52px;
   display: flex; flex-direction: column; gap: 3px;
   transition: border-color .15s, background .15s;
-  overflow: hidden;
 }
 .cal-cell:hover { border-color: var(--green); background: var(--green-l); }
 .cal-cell.blank { background: transparent; border-color: transparent; cursor: default; pointer-events: none; }
