@@ -972,6 +972,21 @@ body {
   font-size: 11px; background: var(--cream2); color: var(--stone);
   border-radius: 6px; padding: 2px 7px; font-weight: 500;
 }
+/* ── HISTORIQUE ── */
+.hist-section {
+  margin-top: 24px; padding-top: 20px;
+  border-top: 1.5px solid var(--border);
+  display: flex; flex-direction: column; gap: 6px;
+}
+.hist-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  background: var(--white); border-radius: var(--r-sm);
+  padding: 10px 13px; border: 1px solid var(--border);
+}
+.hist-left { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.hist-name { font-size: 14px; font-weight: 600; color: var(--ink); }
+.hist-date { font-size: 11.5px; color: var(--stone); }
+
 .plan-add-form {
   background: var(--cream); border-radius: var(--r-sm);
   padding: 14px; display: flex; flex-direction: column; gap: 10px;

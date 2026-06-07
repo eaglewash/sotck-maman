@@ -1399,6 +1399,30 @@ function PlanningTab() {
     load()
   }
 
+  const undoCook = async (h) => {
+    // Remettre les ingrédients dans le stock
+    if (h.recipe_id) {
+      const { data: ings } = await supabase
+        .from('recipe_ingredients')
+        .select('item_id, quantity')
+        .eq('recipe_id', h.recipe_id)
+      if (ings) {
+        for (const ri of ings) {
+          const { data: item } = await supabase.from('items').select('quantity').eq('id', ri.item_id).single()
+          if (item) {
+            await supabase.from('items').update({ quantity: item.quantity + ri.quantity }).eq('id', ri.item_id)
+          }
+        }
+      }
+      // Démarquer "cuisiné" dans meal_plan si la date correspond
+      const cookedDate = (h.cooked_at || '').slice(0,10)
+      const matching = mealPlan.find(m => m.recipe_id === h.recipe_id && m.cooked && m.planned_date === cookedDate)
+      if (matching) await supabase.from('meal_plan').update({ cooked: false }).eq('id', matching.id)
+    }
+    await supabase.from('usage_history').delete().eq('id', h.id)
+    load()
+  }
+
   const dayDateStr  = dayModal ? dStr(dayModal) : null
   const dayMeals    = dayDateStr ? mealsForDay(dayDateStr) : { planned:[], cooked:[] }
   const dayIsPast   = dayModal ? dayModal < today : false
@@ -1459,6 +1483,28 @@ function PlanningTab() {
         </div>
       )}
 
+      {/* Historique */}
+      {!loading && history.length > 0 && (
+        <div className="hist-section">
+          <div className="section-label" style={{marginBottom:8}}>🕘 Historique des repas cuisinés</div>
+          {history.slice(0, 20).map(h => (
+            <div key={h.id} className="hist-row">
+              <div className="hist-left">
+                <span className="hist-name">{h.recipe_name}</span>
+                <span className="hist-date">
+                  {h.cooked_at
+                    ? new Date(h.cooked_at).toLocaleDateString('fr-FR', {day:'numeric', month:'long', year:'numeric'})
+                    : '—'}
+                </span>
+              </div>
+              <button className="btn-sec sm" title="Annuler — remet les ingrédients dans le stock" onClick={() => undoCook(h)}>
+                <I d={IC.refresh} s={13} /> Annuler
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Day Modal */}
       <Modal
         open={!!dayModal}
@@ -1470,8 +1516,15 @@ function PlanningTab() {
             <div className="section-label">🍳 Cuisiné ce jour</div>
             {dayMeals.cooked.map(h => (
               <div key={h.id} className="plan-row cooked">
-                <span className="plan-recipe">{h.recipe_name}</span>
-                {h.cooked_at && <span className="plan-time">{new Date(h.cooked_at).toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit'})}</span>}
+                <div className="plan-left">
+                  <span className="plan-recipe">{h.recipe_name}</span>
+                  {h.cooked_at && <span className="plan-time">{new Date(h.cooked_at).toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit'})}</span>}
+                </div>
+                <div className="plan-acts">
+                  <button className="icon-btn sm danger" title="Annuler — remet les ingrédients dans le stock" onClick={() => undoCook(h)}>
+                    <I d={IC.refresh} s={13} />
+                  </button>
+                </div>
               </div>
             ))}
           </>}
