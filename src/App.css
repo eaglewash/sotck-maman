@@ -848,3 +848,34 @@ body {
 @media (max-width: 380px) {
   .grid { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* ── MOBILE TAB BAR ── */
+@media (max-width: 540px) {
+  .tab-bar {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  /* La barre de recherche prend toute la première ligne */
+  .tab-bar .searchbox {
+    order: 0;
+    flex: 1 1 calc(100% - 48px); /* laisse place au view-toggle */
+  }
+  .tab-bar .view-toggle {
+    order: 1;
+    flex-shrink: 0;
+  }
+  /* Les boutons se partagent la deuxième ligne */
+  .tab-bar .btn-cat,
+  .tab-bar .btn-prim,
+  .tab-bar .btn-sec {
+    order: 2;
+    flex: 1 1 0;
+    justify-content: center;
+    padding: 9px 10px;
+    font-size: 13px;
+  }
+  /* Courses : masquer le titre, garder les boutons */
+  .tab-bar .section-title {
+    display: none;
+  }
+}
