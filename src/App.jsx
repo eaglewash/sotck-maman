@@ -30,6 +30,10 @@ const IC = {
   list:     "M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01",
   euro:     "M4 9a6 6 0 1 0 12 0A6 6 0 0 0 4 9zM2 9h4M2 12h4",
   trend:    "M22 12h-4l-3 9L9 3l-3 9H2",
+  calendar: "M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z",
+  chevL:    "M15 18l-6-6 6-6",
+  chevR:    "M9 18l6-6-6-6",
+  share:    "M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M16 6l-4-4-4 4M12 2v13",
 }
 
 // ══════════════════════════════════════
@@ -353,6 +357,19 @@ function PackForm({ form, setForm }) {
   )
 }
 
+// Helper dates de péremption
+function expiryBadge(expiryDate) {
+  if (!expiryDate) return null
+  const today = new Date(); today.setHours(0,0,0,0)
+  const exp = new Date(expiryDate + 'T00:00:00')
+  const diff = Math.round((exp - today) / 86400000)
+  if (diff < 0)  return { label: 'Expiré ⚠️', cls: 'expired' }
+  if (diff === 0) return { label: "Expire auj.", cls: 'expires-today' }
+  if (diff === 1) return { label: 'Expire demain', cls: 'expires-soon' }
+  if (diff <= 7)  return { label: `Expire dans ${diff} j`, cls: 'expires-warn' }
+  return null
+}
+
 // Helper pour afficher la quantité d'un item en paquets si disponible
 function itemDisplayQty(item) {
   if (item.pack_size && item.pack_label && item.pack_size > 0) {
@@ -375,7 +392,7 @@ function StockTab() {
   const [view, setView] = useState('grid')
   const [modal, setModal] = useState(false)
   const [editing, setEditing] = useState(null)
-  const [form, setForm] = useState({ name:'', quantity:'', unit:'g', category:'Épicerie sèche', min_quantity:'1', price:'', pack_label:'', pack_size:'' })
+  const [form, setForm] = useState({ name:'', quantity:'', unit:'g', category:'Épicerie sèche', min_quantity:'1', price:'', pack_label:'', pack_size:'', expiry_date:'' })
   const [customCats, setCustomCats] = useState(() => {
     try { return JSON.parse(localStorage.getItem('customCats') || '[]') } catch { return [] }
   })
@@ -401,13 +418,13 @@ function StockTab() {
 
   const openAdd = () => {
     setEditing(null)
-    setForm({ name:'', quantity:'', unit:'g', category:'Épicerie sèche', min_quantity:'1', price:'', pack_label:'', pack_size:'' })
+    setForm({ name:'', quantity:'', unit:'g', category:'Épicerie sèche', min_quantity:'1', price:'', pack_label:'', pack_size:'', expiry_date:'' })
     setModal(true)
   }
 
   const openEdit = (item) => {
     setEditing(item)
-    setForm({ name: item.name, quantity: String(item.quantity), unit: item.unit, category: item.category, min_quantity: String(item.min_quantity), price: item.price != null ? String(item.price) : '', pack_label: item.pack_label || '', pack_size: item.pack_size ? String(item.pack_size) : '' })
+    setForm({ name: item.name, quantity: String(item.quantity), unit: item.unit, category: item.category, min_quantity: String(item.min_quantity), price: item.price != null ? String(item.price) : '', pack_label: item.pack_label || '', pack_size: item.pack_size ? String(item.pack_size) : '', expiry_date: item.expiry_date ? item.expiry_date.slice(0,10) : '' })
     setModal(true)
   }
 
@@ -416,7 +433,7 @@ function StockTab() {
     const price = form.price !== '' ? parseFloat(form.price) : null
     const pack_size = form.pack_size !== '' ? parseFloat(form.pack_size) : null
     const pack_label = form.pack_label.trim() || null
-    const payload = { name: form.name.trim(), quantity: parseFloat(form.quantity)||0, unit: form.unit, category: form.category, min_quantity: parseFloat(form.min_quantity)||0, price, pack_size, pack_label }
+    const payload = { name: form.name.trim(), quantity: parseFloat(form.quantity)||0, unit: form.unit, category: form.category, min_quantity: parseFloat(form.min_quantity)||0, price, pack_size, pack_label, expiry_date: form.expiry_date || null }
     let itemId
     if (editing) {
       await supabase.from('items').update(payload).eq('id', editing.id)
@@ -494,6 +511,7 @@ function StockTab() {
             const s = status(item)
             const ph = priceHistory[item.id] || []
             const dq = itemDisplayQty(item)
+            const eb = expiryBadge(item.expiry_date)
             return (
               <div key={item.id} className={`card s-${s}`}>
                 <div className="card-top">
@@ -511,6 +529,7 @@ function StockTab() {
                 {dq.sub && <span className="card-qty-sub">{dq.sub}</span>}
                 {ph.length >= 2 && <Sparkline data={ph} />}
                 {item.price != null && ph.length < 2 && <span className="card-price">{item.price.toFixed(2)} €</span>}
+                {eb && <span className={`badge ${eb.cls}`}>{eb.label}</span>}
                 {s !== 'ok' && <span className={`badge ${s}`}>{s==='empty'?'Épuisé':'Stock bas'}</span>}
               </div>
             )
@@ -522,12 +541,14 @@ function StockTab() {
             const s = status(item)
             const ph = priceHistory[item.id] || []
             const dq = itemDisplayQty(item)
+            const eb = expiryBadge(item.expiry_date)
             return (
               <div key={item.id} className={`list-item s-${s}`}>
                 <div className="list-left">
                   <div className="list-name">{item.name}</div>
                   <div className="list-meta">
                     <span className="list-cat">{item.category}</span>
+                    {eb && <span className={`badge ${eb.cls}`}>{eb.label}</span>}
                     {s !== 'ok' && <span className={`badge ${s}`}>{s==='empty'?'Épuisé':'Stock bas'}</span>}
                   </div>
                 </div>
@@ -569,6 +590,9 @@ function StockTab() {
             <select value={form.unit} onChange={e => setForm(f=>({...f,unit:e.target.value}))}>{UNITS.map(u=><option key={u}>{u}</option>)}</select>
           </label>
           <PackForm form={form} setForm={setForm} />
+          <label>Date de péremption (optionnel)
+            <input type="date" value={form.expiry_date} onChange={e => setForm(f=>({...f,expiry_date:e.target.value}))} />
+          </label>
           <div className="form-actions">
             <button className="btn-sec" onClick={() => setModal(false)}>Annuler</button>
             <button className="btn-prim" onClick={save}>{editing?'Modifier':'Ajouter'}</button>
@@ -970,9 +994,34 @@ function ShoppingTab() {
     saveManual(manualItems.map(m => m.id === id ? {...m, checkedManual: !m.checkedManual} : m))
   }
 
+  const expiringItems = items.filter(i => i.quantity > 0 && expiryBadge(i.expiry_date) !== null)
+
   const checkedCount = needShopping.filter(i => checked[i.id]).length + manualItems.filter(m => m.checkedManual).length
   const totalCount = needShopping.length + manualItems.length
   const preview = restockPreview()
+
+  const shareList = () => {
+    const lines = ['🛒 *Liste de courses*']
+    if (urgent.length > 0) {
+      lines.push('\n🔴 *Épuisé — urgence :*')
+      urgent.forEach(i => {
+        const ps = suggestPacks(i)
+        lines.push(ps && i.pack_label ? `  • ${i.name} (${ps} ${i.pack_label}${ps>1?'s':''})` : `  • ${i.name}`)
+      })
+    }
+    if (low.length > 0) {
+      lines.push('\n🟡 *Stock bas :*')
+      low.forEach(i => {
+        const ps = suggestPacks(i)
+        lines.push(ps && i.pack_label ? `  • ${i.name} (${ps} ${i.pack_label}${ps>1?'s':''})` : `  • ${i.name}`)
+      })
+    }
+    if (manualItems.length > 0) {
+      lines.push('\n📝 *Autres :*')
+      manualItems.forEach(m => lines.push(`  • ${m.name}${m.note ? ` (${m.note})` : ''}`))
+    }
+    window.open(`https://wa.me/?text=${encodeURIComponent(lines.join('\n'))}`, '_blank')
+  }
 
   // Suggestions pour l'ajout manuel : items du stock non déjà dans la liste automatique
   const addSuggestions = items.filter(i =>
@@ -985,13 +1034,14 @@ function ShoppingTab() {
       <div className="tab-bar">
         <h2 className="section-title">Courses</h2>
         <button className="btn-sec" onClick={load}><I d={IC.refresh} s={15} /> Actualiser</button>
+        {totalCount > 0 && <button className="btn-sec" onClick={shareList} title="Partager sur WhatsApp"><I d={IC.share} s={15} /> Partager</button>}
         <button className="btn-prim" onClick={() => { setAddModal(true); setAddSearch(''); setAddNote('') }}>
           <I d={IC.plus} s={16} /> Ajouter
         </button>
       </div>
 
       {loading ? <div className="loading"><span className="spin" /></div> : (
-        totalCount === 0 ? (
+        totalCount === 0 && expiringItems.length === 0 ? (
           <div className="empty success">
             <div className="check-big"><I d={IC.check} s={30} /></div>
             <p>Tout est en stock !</p>
@@ -1016,6 +1066,26 @@ function ShoppingTab() {
               <div className="shop-section">
                 <div className="shop-section-title warning">Stock bas — à prévoir</div>
                 {low.map(item => <ShopItem key={item.id} item={item} checked={checked[item.id]} onCheck={() => setChecked(p=>({...p,[item.id]:!p[item.id]}))} onRestock={() => openRestock(item)} packs={suggestPacks(item)} />)}
+              </div>
+            )}
+            {expiringItems.length > 0 && (
+              <div className="shop-section">
+                <div className="shop-section-title expiring">⏰ À consommer bientôt</div>
+                {expiringItems.map(item => {
+                  const eb = expiryBadge(item.expiry_date)
+                  return (
+                    <div key={`exp-${item.id}`} className="shop-item2 expiring">
+                      <div className="shop-info2" style={{flex:1}}>
+                        <div className="shop-name2">{item.name}</div>
+                        <div className="shop-meta">
+                          <span className="shop-cat-tag">{item.category}</span>
+                          <span className="shop-stock">{item.quantity} {item.unit} en stock</span>
+                        </div>
+                      </div>
+                      <span className={`badge ${eb.cls}`}>{eb.label}</span>
+                    </div>
+                  )
+                })}
               </div>
             )}
             {manualItems.length > 0 && (
@@ -1225,14 +1295,243 @@ function ShopItem({ item, checked, onCheck, onRestock, packs }) {
 }
 
 // ══════════════════════════════════════
+// PLANNING TAB
+// ══════════════════════════════════════
+const MONTHS_FR = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre']
+const DAYS_FR   = ['Lu','Ma','Me','Je','Ve','Sa','Di']
+const MEAL_TYPES = ['Petit-déjeuner','Déjeuner','Dîner','Snack','Autre']
+
+function PlanningTab() {
+  const todayStr = new Date().toISOString().slice(0,10)
+  const today = new Date(todayStr + 'T00:00:00')
+
+  const [current, setCurrent] = useState(() => { const d = new Date(); d.setDate(1); d.setHours(0,0,0,0); return d })
+  const [mealPlan, setMealPlan] = useState([])
+  const [history, setHistory] = useState([])
+  const [recipes, setRecipes] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [dayModal, setDayModal] = useState(null)
+  const [planModal, setPlanModal] = useState(false)
+  const [planForm, setPlanForm] = useState({ recipe_name:'', meal_type:'Dîner', notes:'' })
+  const [selRecipeId, setSelRecipeId] = useState('')
+
+  const dStr = (d) => d.toISOString().slice(0,10)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    const [{ data: mp }, { data: uh }, { data: rec }] = await Promise.all([
+      supabase.from('meal_plan').select('*').order('planned_date'),
+      supabase.from('usage_history').select('*').order('cooked_at', { ascending: false }),
+      supabase.from('recipes').select('id,name').order('name'),
+    ])
+    setMealPlan(mp || [])
+    setHistory(uh || [])
+    setRecipes(rec || [])
+    setLoading(false)
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  const year  = current.getFullYear()
+  const month = current.getMonth()
+  const daysInMonth  = new Date(year, month + 1, 0).getDate()
+  const firstDayOfWeek = (new Date(year, month, 1).getDay() + 6) % 7 // Mon=0
+
+  const mealsForDay = (iso) => ({
+    planned: mealPlan.filter(m => m.planned_date === iso),
+    cooked:  history.filter(h => (h.cooked_at || '').slice(0,10) === iso),
+  })
+
+  const openDay = (day) => {
+    setDayModal(new Date(year, month, day))
+    setPlanForm({ recipe_name:'', meal_type:'Dîner', notes:'' })
+    setSelRecipeId('')
+    setPlanModal(false)
+  }
+
+  const addMeal = async () => {
+    const name = selRecipeId
+      ? (recipes.find(r => r.id === selRecipeId)?.name || planForm.recipe_name)
+      : planForm.recipe_name
+    if (!name.trim()) return
+    await supabase.from('meal_plan').insert([{
+      recipe_id: selRecipeId || null,
+      recipe_name: name.trim(),
+      planned_date: dStr(dayModal),
+      meal_type: planForm.meal_type,
+      notes: planForm.notes || null,
+    }])
+    load()
+    setPlanModal(false)
+  }
+
+  const deletePlan = async (id) => {
+    await supabase.from('meal_plan').delete().eq('id', id)
+    load()
+  }
+
+  const markCooked = async (meal) => {
+    await supabase.from('meal_plan').update({ cooked: true }).eq('id', meal.id)
+    load()
+  }
+
+  const dayDateStr  = dayModal ? dStr(dayModal) : null
+  const dayMeals    = dayDateStr ? mealsForDay(dayDateStr) : { planned:[], cooked:[] }
+  const dayIsPast   = dayModal ? dayModal < today : false
+
+  // Build calendar cells
+  const cells = []
+  for (let i = 0; i < firstDayOfWeek; i++) cells.push(null)
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d)
+
+  return (
+    <div className="tab-content">
+      <div className="tab-bar">
+        <h2 className="section-title">Planning</h2>
+        <button className="btn-sec" onClick={load}><I d={IC.refresh} s={15} /> Actualiser</button>
+      </div>
+
+      {loading ? <div className="loading"><span className="spin" /></div> : (
+        <div className="cal-wrap">
+          <div className="cal-nav">
+            <button className="icon-btn" onClick={() => setCurrent(d => new Date(d.getFullYear(), d.getMonth() - 1, 1))}>
+              <I d={IC.chevL} s={18} />
+            </button>
+            <span className="cal-month-label">{MONTHS_FR[month]} {year}</span>
+            <button className="icon-btn" onClick={() => setCurrent(d => new Date(d.getFullYear(), d.getMonth() + 1, 1))}>
+              <I d={IC.chevR} s={18} />
+            </button>
+          </div>
+
+          <div className="cal-grid">
+            {DAYS_FR.map(d => <div key={d} className="cal-head-cell">{d}</div>)}
+            {cells.map((day, i) => {
+              if (!day) return <div key={`b${i}`} className="cal-cell blank" />
+              const iso = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`
+              const { planned, cooked } = mealsForDay(iso)
+              const isToday = iso === todayStr
+              const isPast  = new Date(year, month, day) < today
+              const total   = planned.length + cooked.length
+              return (
+                <div key={day} className={`cal-cell ${isToday?'today':''} ${isPast?'past':''}`} onClick={() => openDay(day)}>
+                  <span className="cal-day-num">{day}</span>
+                  {total > 0 && (
+                    <div className="cal-cell-meals">
+                      {cooked.slice(0,1).map(h => <span key={h.id} className="cal-meal-tag cooked">{h.recipe_name}</span>)}
+                      {planned.slice(0, cooked.length > 0 ? 0 : 1).map(m => (
+                        <span key={m.id} className={`cal-meal-tag planned ${m.cooked?'done':''}`}>{m.recipe_name}</span>
+                      ))}
+                      {total > 1 && <span className="cal-meal-more">+{total - 1}</span>}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+
+          <div className="cal-legend">
+            <span className="cal-legend-item"><span className="cal-dot-demo cooked" />Cuisiné</span>
+            <span className="cal-legend-item"><span className="cal-dot-demo planned" />Planifié</span>
+          </div>
+        </div>
+      )}
+
+      {/* Day Modal */}
+      <Modal
+        open={!!dayModal}
+        onClose={() => setDayModal(null)}
+        title={dayModal ? `${dayModal.getDate()} ${MONTHS_FR[dayModal.getMonth()]} ${dayModal.getFullYear()}` : ''}
+      >
+        <div className="form">
+          {dayMeals.cooked.length > 0 && <>
+            <div className="section-label">🍳 Cuisiné ce jour</div>
+            {dayMeals.cooked.map(h => (
+              <div key={h.id} className="plan-row cooked">
+                <span className="plan-recipe">{h.recipe_name}</span>
+                {h.cooked_at && <span className="plan-time">{new Date(h.cooked_at).toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit'})}</span>}
+              </div>
+            ))}
+          </>}
+
+          {dayMeals.planned.length > 0 && <>
+            <div className="section-label">📅 Planifié</div>
+            {dayMeals.planned.map(m => (
+              <div key={m.id} className={`plan-row ${m.cooked?'cooked':''}`}>
+                <div className="plan-left">
+                  <span className="plan-recipe">{m.recipe_name}</span>
+                  <span className="plan-type">{m.meal_type}</span>
+                  {m.notes && <span className="plan-notes">{m.notes}</span>}
+                </div>
+                <div className="plan-acts">
+                  {!m.cooked && !dayIsPast && (
+                    <button className="icon-btn sm" title="Marquer cuisiné" onClick={() => markCooked(m)}><I d={IC.check} s={13} /></button>
+                  )}
+                  <button className="icon-btn sm danger" onClick={() => deletePlan(m.id)}><I d={IC.trash} s={13} /></button>
+                </div>
+              </div>
+            ))}
+          </>}
+
+          {dayMeals.cooked.length === 0 && dayMeals.planned.length === 0 && (
+            <p className="plan-empty">Aucun repas ce jour.</p>
+          )}
+
+          {!planModal ? (
+            <button className="btn-prim" style={{marginTop:12}} onClick={() => setPlanModal(true)}>
+              <I d={IC.plus} s={15} /> Planifier un repas
+            </button>
+          ) : (
+            <div className="plan-add-form">
+              <div className="section-label">Nouveau repas</div>
+              <label>Recette
+                <select value={selRecipeId} onChange={e => {
+                  setSelRecipeId(e.target.value)
+                  if (e.target.value) {
+                    const r = recipes.find(x => x.id === e.target.value)
+                    if (r) setPlanForm(f => ({...f, recipe_name: r.name}))
+                  } else {
+                    setPlanForm(f => ({...f, recipe_name: ''}))
+                  }
+                }}>
+                  <option value="">— Saisir le nom manuellement —</option>
+                  {recipes.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                </select>
+              </label>
+              {!selRecipeId && (
+                <label>Nom du repas
+                  <input value={planForm.recipe_name} onChange={e => setPlanForm(f=>({...f,recipe_name:e.target.value}))} placeholder="Ex: Pasta, Pizza..." autoFocus />
+                </label>
+              )}
+              <label>Moment du repas
+                <select value={planForm.meal_type} onChange={e => setPlanForm(f=>({...f,meal_type:e.target.value}))}>
+                  {MEAL_TYPES.map(t => <option key={t}>{t}</option>)}
+                </select>
+              </label>
+              <label>Notes (optionnel)
+                <input value={planForm.notes} onChange={e => setPlanForm(f=>({...f,notes:e.target.value}))} placeholder="Invités, occasion..." />
+              </label>
+              <div className="form-actions">
+                <button className="btn-sec" onClick={() => setPlanModal(false)}>Annuler</button>
+                <button className="btn-prim" onClick={addMeal}><I d={IC.check} s={15} /> Ajouter</button>
+              </div>
+            </div>
+          )}
+        </div>
+      </Modal>
+    </div>
+  )
+}
+
+// ══════════════════════════════════════
 // APP ROOT
 // ══════════════════════════════════════
 export default function App() {
   const [tab, setTab] = useState('stock')
   const tabs = [
-    { id:'stock',   label:'Stock',    icon: IC.stock  },
-    { id:'recipes', label:'Recettes', icon: IC.recipe },
-    { id:'shop',    label:'Courses',  icon: IC.shop   },
+    { id:'stock',    label:'Stock',    icon: IC.stock    },
+    { id:'recipes',  label:'Recettes', icon: IC.recipe   },
+    { id:'shop',     label:'Courses',  icon: IC.shop     },
+    { id:'planning', label:'Planning', icon: IC.calendar },
   ]
   return (
     <div className="app">
@@ -1253,9 +1552,10 @@ export default function App() {
         ))}
       </nav>
       <main className="main">
-        {tab==='stock'   && <StockTab />}
-        {tab==='recipes' && <RecipesTab />}
-        {tab==='shop'    && <ShoppingTab />}
+        {tab==='stock'    && <StockTab />}
+        {tab==='recipes'  && <RecipesTab />}
+        {tab==='shop'     && <ShoppingTab />}
+        {tab==='planning' && <PlanningTab />}
       </main>
     </div>
   )
