@@ -401,7 +401,7 @@ function StockTab() {
 
   const openAdd = () => {
     setEditing(null)
-    setForm({ name:'', quantity:'', unit:'g', category:'Épicerie sèche', min_quantity:'1', price:'' })
+    setForm({ name:'', quantity:'', unit:'g', category:'Épicerie sèche', min_quantity:'1', price:'', pack_label:'', pack_size:'' })
     setModal(true)
   }
 
