@@ -277,6 +277,93 @@ function Modal({ open, onClose, title, children }) {
 }
 
 // ══════════════════════════════════════
+// PACK FORM (conditionnement + quantité intelligente)
+// ══════════════════════════════════════
+function PackForm({ form, setForm }) {
+  const hasPack = form.pack_label.trim() && parseFloat(form.pack_size) > 0
+  const packSize = parseFloat(form.pack_size) || 1
+
+  const packCount = hasPack ? Math.round((parseFloat(form.quantity || 0) / packSize) * 10) / 10 : null
+  const packMin   = hasPack ? Math.round((parseFloat(form.min_quantity || 0) / packSize) * 10) / 10 : null
+
+  return (
+    <>
+      {/* Conditionnement */}
+      <div className="pack-section">
+        <div className="pack-label-row">
+          <span className="section-label" style={{margin:0}}>Conditionnement</span>
+          <span className="pack-hint">optionnel</span>
+        </div>
+        <p className="pack-explainer">
+          Comment est vendu cet article ?<br/>
+          <em>Ex : chocolat → 1 tablette = 200 g · œufs → 1 boîte = 12 pièces</em>
+        </p>
+        <div className="pack-row">
+          <span className="pack-text">1</span>
+          <input className="pack-input-label" value={form.pack_label}
+            onChange={e => setForm(f=>({...f, pack_label: e.target.value}))}
+            placeholder="tablette / boîte / sachet..." />
+          <span className="pack-text">=</span>
+          <input className="pack-input-size" type="number" value={form.pack_size}
+            onChange={e => setForm(f=>({...f, pack_size: e.target.value}))}
+            placeholder="ex: 200" min="0" step="0.1" />
+          <span className="pack-text">{form.unit || 'unité(s)'}</span>
+        </div>
+      </div>
+
+      {/* Quantité — s'adapte selon le conditionnement */}
+      {hasPack ? (
+        <>
+          <label>
+            Combien de {form.pack_label}s en stock ?
+            <input type="number" min="0" step="0.5"
+              value={packCount || ''}
+              onChange={e => {
+                const n = parseFloat(e.target.value) || 0
+                setForm(f => ({...f, quantity: String(n * packSize)}))
+              }}
+              placeholder="ex: 3"
+            />
+            <span className="pack-qty-sub">= {parseFloat(form.quantity) || 0} {form.unit} au total</span>
+          </label>
+          <label>
+            Alerter quand il reste moins de… ({form.pack_label}s)
+            <input type="number" min="0" step="0.5"
+              value={packMin || ''}
+              onChange={e => {
+                const n = parseFloat(e.target.value) || 0
+                setForm(f => ({...f, min_quantity: String(n * packSize)}))
+              }}
+              placeholder="ex: 1"
+            />
+            <span className="pack-qty-sub">= {parseFloat(form.min_quantity) || 0} {form.unit}</span>
+          </label>
+        </>
+      ) : (
+        <div className="row2">
+          <label>Quantité en stock<input type="number" value={form.quantity} onChange={e => setForm(f=>({...f,quantity:e.target.value}))} placeholder="0" min="0" step="0.1" /></label>
+          <label>Quantité min. (alerte)<input type="number" value={form.min_quantity} onChange={e => setForm(f=>({...f,min_quantity:e.target.value}))} placeholder="1" min="0" step="0.1" /></label>
+        </div>
+      )}
+
+      <label>Prix actuel (€)
+        <input type="number" value={form.price} onChange={e => setForm(f=>({...f,price:e.target.value}))} placeholder="0.00" min="0" step="0.01" />
+      </label>
+    </>
+  )
+}
+
+// Helper pour afficher la quantité d'un item en paquets si disponible
+function itemDisplayQty(item) {
+  if (item.pack_size && item.pack_label && item.pack_size > 0) {
+    const packs = item.quantity / item.pack_size
+    const rounded = Math.round(packs * 10) / 10
+    return { num: rounded, unit: item.pack_label + (rounded !== 1 ? 's' : ''), sub: `${item.quantity} ${item.unit}` }
+  }
+  return { num: item.quantity, unit: item.unit, sub: null }
+}
+
+// ══════════════════════════════════════
 // STOCK TAB
 // ══════════════════════════════════════
 function StockTab() {
@@ -406,6 +493,7 @@ function StockTab() {
           {filtered.map(item => {
             const s = status(item)
             const ph = priceHistory[item.id] || []
+            const dq = itemDisplayQty(item)
             return (
               <div key={item.id} className={`card s-${s}`}>
                 <div className="card-top">
@@ -417,9 +505,10 @@ function StockTab() {
                 </div>
                 <div className="card-name">{item.name}</div>
                 <div className="card-qty">
-                  <span className="qty-num">{item.quantity}</span>
-                  <span className="qty-unit">{item.unit}</span>
+                  <span className="qty-num">{dq.num}</span>
+                  <span className="qty-unit">{dq.unit}</span>
                 </div>
+                {dq.sub && <span className="card-qty-sub">{dq.sub}</span>}
                 {ph.length >= 2 && <Sparkline data={ph} />}
                 {item.price != null && ph.length < 2 && <span className="card-price">{item.price.toFixed(2)} €</span>}
                 {s !== 'ok' && <span className={`badge ${s}`}>{s==='empty'?'Épuisé':'Stock bas'}</span>}
@@ -432,6 +521,7 @@ function StockTab() {
           {filtered.map(item => {
             const s = status(item)
             const ph = priceHistory[item.id] || []
+            const dq = itemDisplayQty(item)
             return (
               <div key={item.id} className={`list-item s-${s}`}>
                 <div className="list-left">
@@ -442,7 +532,8 @@ function StockTab() {
                   </div>
                 </div>
                 <div className="list-mid">
-                  <span className="list-qty">{item.quantity}<span className="list-unit"> {item.unit}</span></span>
+                  <span className="list-qty">{dq.num}<span className="list-unit"> {dq.unit}</span></span>
+                  {dq.sub && <span className="list-qty-sub">{dq.sub}</span>}
                 </div>
                 <div className="list-spark">
                   {ph.length >= 2 ? <Sparkline data={ph} /> : item.price != null ? <span className="card-price">{item.price.toFixed(2)} €</span> : <span className="spark-empty">—</span>}
@@ -469,41 +560,15 @@ function StockTab() {
             }))} />
           )}
           <label>Nom<input value={form.name} onChange={e => setForm(f=>({...f,name:e.target.value}))} placeholder="Ex: Farine de blé" /></label>
-          <div className="row2">
-            <label>Quantité en stock<input type="number" value={form.quantity} onChange={e => setForm(f=>({...f,quantity:e.target.value}))} placeholder="0" min="0" step="0.1" /></label>
-            <label>Unité (recettes)<select value={form.unit} onChange={e => setForm(f=>({...f,unit:e.target.value}))}>{UNITS.map(u=><option key={u}>{u}</option>)}</select></label>
-          </div>
           <label>Catégorie
             <select value={form.category} onChange={e => setForm(f=>({...f,category:e.target.value}))}>
               {allCats.map(c=><option key={c}>{c}</option>)}
             </select>
           </label>
-          <div className="row2">
-            <label>Quantité min. (alerte)<input type="number" value={form.min_quantity} onChange={e => setForm(f=>({...f,min_quantity:e.target.value}))} placeholder="1" min="0" step="0.1" /></label>
-            <label>Prix actuel (€)<input type="number" value={form.price} onChange={e => setForm(f=>({...f,price:e.target.value}))} placeholder="0.00" min="0" step="0.01" /></label>
-          </div>
-          <div className="pack-section">
-            <div className="pack-label-row">
-              <span className="section-label" style={{margin:0}}>Conditionnement</span>
-              <span className="pack-hint">optionnel</span>
-            </div>
-            <p className="pack-explainer">
-              Comment est vendu cet article en magasin ?<br/>
-              <em>Ex : Œufs → unité = pièce(s), conditionnement = 1 boîte = 12 pièces</em>
-            </p>
-            <div className="pack-row">
-              <span className="pack-text">1</span>
-              <input className="pack-input-label" value={form.pack_label} onChange={e => setForm(f=>({...f,pack_label:e.target.value}))} placeholder="boîte / sachet / bouteille..." />
-              <span className="pack-text">=</span>
-              <input className="pack-input-size" type="number" value={form.pack_size} onChange={e => setForm(f=>({...f,pack_size:e.target.value}))} placeholder="ex: 12" min="0" step="0.1" />
-              <span className="pack-text">{form.unit || 'unité(s)'}</span>
-            </div>
-            {form.pack_label && form.pack_size && (
-              <div className="pack-preview">
-                ✓ Les recettes utilisent des <b>{form.unit}</b> — à l'achat, elle prend des <b>{form.pack_label}s</b> de <b>{form.pack_size} {form.unit}</b>
-              </div>
-            )}
-          </div>
+          <label>Unité de base (utilisée dans les recettes)
+            <select value={form.unit} onChange={e => setForm(f=>({...f,unit:e.target.value}))}>{UNITS.map(u=><option key={u}>{u}</option>)}</select>
+          </label>
+          <PackForm form={form} setForm={setForm} />
           <div className="form-actions">
             <button className="btn-sec" onClick={() => setModal(false)}>Annuler</button>
             <button className="btn-prim" onClick={save}>{editing?'Modifier':'Ajouter'}</button>
@@ -1012,34 +1077,15 @@ function ShoppingTab() {
             category: p.category || f.category,
           }))} />
           <label>Nom<input value={newStockForm.name} onChange={e => setNewStockForm(f=>({...f,name:e.target.value}))} /></label>
-          <div className="new-stock-unit-hint">
-            💡 Choisissez l'unité utilisée dans vos recettes.<br/>
-            <em>Ex : chocolat → <b>g</b> et entrez le poids total de la tablette (200g). Œufs → <b>pièce(s)</b>.</em>
-          </div>
-          <div className="row2">
-            <label>Quantité en stock<input type="number" min="0" step="0.1" value={newStockForm.quantity} onChange={e => setNewStockForm(f=>({...f,quantity:e.target.value}))} placeholder="ex: 200" autoFocus /></label>
-            <label>Unité (recettes)<select value={newStockForm.unit} onChange={e => setNewStockForm(f=>({...f,unit:e.target.value}))}>{UNITS.map(u=><option key={u}>{u}</option>)}</select></label>
-          </div>
           <label>Catégorie
             <select value={newStockForm.category} onChange={e => setNewStockForm(f=>({...f,category:e.target.value}))}>
               {CATEGORIES.map(c=><option key={c}>{c}</option>)}
             </select>
           </label>
-          <label>Quantité min. (alerte)<input type="number" min="0" step="0.1" value={newStockForm.min_quantity} onChange={e => setNewStockForm(f=>({...f,min_quantity:e.target.value}))} placeholder="1" /></label>
-          <div className="pack-section">
-            <div className="pack-label-row">
-              <span className="section-label" style={{margin:0}}>Conditionnement</span>
-              <span className="pack-hint">optionnel</span>
-            </div>
-            <p className="pack-explainer">Comment est vendu cet article ?<br/><em>Ex : Œufs → 1 boîte = 12 pièces</em></p>
-            <div className="pack-row">
-              <span className="pack-text">1</span>
-              <input className="pack-input-label" value={newStockForm.pack_label} onChange={e => setNewStockForm(f=>({...f,pack_label:e.target.value}))} placeholder="boîte / sachet..." />
-              <span className="pack-text">=</span>
-              <input className="pack-input-size" type="number" value={newStockForm.pack_size} onChange={e => setNewStockForm(f=>({...f,pack_size:e.target.value}))} placeholder="ex: 12" min="0" step="0.1" />
-              <span className="pack-text">{newStockForm.unit || 'unité(s)'}</span>
-            </div>
-          </div>
+          <label>Unité de base (utilisée dans les recettes)
+            <select value={newStockForm.unit} onChange={e => setNewStockForm(f=>({...f,unit:e.target.value}))}>{UNITS.map(u=><option key={u}>{u}</option>)}</select>
+          </label>
+          <PackForm form={newStockForm} setForm={setNewStockForm} />
           <div className="form-actions">
             <button className="btn-sec" onClick={() => setNewStockModal(false)}>Annuler</button>
             <button className="btn-prim" onClick={confirmNewStock}><I d={IC.check} s={15} /> Ajouter au stock</button>
