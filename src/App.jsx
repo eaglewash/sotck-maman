@@ -31,6 +31,7 @@ const IC = {
   euro:     "M4 9a6 6 0 1 0 12 0A6 6 0 0 0 4 9zM2 9h4M2 12h4",
   trend:    "M22 12h-4l-3 9L9 3l-3 9H2",
   calendar: "M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z",
+  history:  "M12 8v4l3 3M3.05 11a9 9 0 1 0 .5-3M3 4v4h4",
   chevL:    "M15 18l-6-6 6-6",
   chevR:    "M9 18l6-6-6-6",
   share:    "M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M16 6l-4-4-4 4M12 2v13",
@@ -1483,28 +1484,6 @@ function PlanningTab() {
         </div>
       )}
 
-      {/* Historique */}
-      {!loading && history.length > 0 && (
-        <div className="hist-section">
-          <div className="section-label" style={{marginBottom:8}}>🕘 Historique des repas cuisinés</div>
-          {history.slice(0, 20).map(h => (
-            <div key={h.id} className="hist-row">
-              <div className="hist-left">
-                <span className="hist-name">{h.recipe_name}</span>
-                <span className="hist-date">
-                  {h.cooked_at
-                    ? new Date(h.cooked_at).toLocaleDateString('fr-FR', {day:'numeric', month:'long', year:'numeric'})
-                    : '—'}
-                </span>
-              </div>
-              <button className="btn-sec sm" title="Annuler — remet les ingrédients dans le stock" onClick={() => undoCook(h)}>
-                <I d={IC.refresh} s={13} /> Annuler
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-
       {/* Day Modal */}
       <Modal
         open={!!dayModal}
@@ -1609,15 +1588,117 @@ function PlanningTab() {
 }
 
 // ══════════════════════════════════════
+// HISTORIQUE TAB
+// ══════════════════════════════════════
+function HistoriqueTab() {
+  const [history, setHistory] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    const { data } = await supabase
+      .from('usage_history')
+      .select('*')
+      .order('cooked_at', { ascending: false })
+    setHistory(data || [])
+    setLoading(false)
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  const undoCook = async (h) => {
+    if (h.recipe_id) {
+      const { data: ings } = await supabase
+        .from('recipe_ingredients')
+        .select('item_id, quantity')
+        .eq('recipe_id', h.recipe_id)
+      if (ings) {
+        for (const ri of ings) {
+          const { data: item } = await supabase.from('items').select('quantity').eq('id', ri.item_id).single()
+          if (item) {
+            await supabase.from('items').update({ quantity: item.quantity + ri.quantity }).eq('id', ri.item_id)
+          }
+        }
+      }
+      // Démarquer dans meal_plan si possible
+      const cookedDate = (h.cooked_at || '').slice(0,10)
+      const { data: mp } = await supabase
+        .from('meal_plan')
+        .select('id')
+        .eq('recipe_id', h.recipe_id)
+        .eq('cooked', true)
+        .eq('planned_date', cookedDate)
+        .limit(1)
+      if (mp?.length > 0) await supabase.from('meal_plan').update({ cooked: false }).eq('id', mp[0].id)
+    }
+    await supabase.from('usage_history').delete().eq('id', h.id)
+    load()
+  }
+
+  // Grouper par date
+  const grouped = {}
+  for (const h of history) {
+    const date = (h.cooked_at || '').slice(0,10)
+    if (!grouped[date]) grouped[date] = []
+    grouped[date].push(h)
+  }
+  const dates = Object.keys(grouped).sort((a,b) => b.localeCompare(a))
+
+  return (
+    <div className="tab-content">
+      <div className="tab-bar">
+        <h2 className="section-title">Historique</h2>
+        <button className="btn-sec" onClick={load}><I d={IC.refresh} s={15} /> Actualiser</button>
+      </div>
+
+      {loading ? <div className="loading"><span className="spin" /></div> :
+        history.length === 0 ? (
+          <div className="empty">
+            <I d={IC.history} s={36} />
+            <p>Aucun repas cuisiné pour l'instant</p>
+          </div>
+        ) : (
+          <div className="hist-list">
+            {dates.map(date => (
+              <div key={date} className="hist-group">
+                <div className="hist-group-date">
+                  {new Date(date + 'T12:00:00').toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long', year:'numeric' })}
+                </div>
+                {grouped[date].map(h => (
+                  <div key={h.id} className="hist-row">
+                    <div className="hist-left">
+                      <span className="hist-name">{h.recipe_name}</span>
+                      {h.cooked_at && (
+                        <span className="hist-date">
+                          {new Date(h.cooked_at).toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' })}
+                        </span>
+                      )}
+                    </div>
+                    <button className="btn-sec sm" onClick={() => undoCook(h)} title="Annuler et remettre les ingrédients dans le stock">
+                      <I d={IC.refresh} s={13} /> Annuler
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        )
+      }
+    </div>
+  )
+}
+
+// ══════════════════════════════════════
 // APP ROOT
 // ══════════════════════════════════════
 export default function App() {
   const [tab, setTab] = useState('stock')
   const tabs = [
-    { id:'stock',    label:'Stock',    icon: IC.stock    },
-    { id:'recipes',  label:'Recettes', icon: IC.recipe   },
-    { id:'shop',     label:'Courses',  icon: IC.shop     },
-    { id:'planning', label:'Planning', icon: IC.calendar },
+    { id:'stock',      label:'Stock',      icon: IC.stock    },
+    { id:'recipes',    label:'Recettes',   icon: IC.recipe   },
+    { id:'shop',       label:'Courses',    icon: IC.shop     },
+    { id:'planning',   label:'Planning',   icon: IC.calendar },
+    { id:'historique', label:'Historique', icon: IC.history  },
   ]
   return (
     <div className="app">
@@ -1638,10 +1719,11 @@ export default function App() {
         ))}
       </nav>
       <main className="main">
-        {tab==='stock'    && <StockTab />}
-        {tab==='recipes'  && <RecipesTab />}
-        {tab==='shop'     && <ShoppingTab />}
-        {tab==='planning' && <PlanningTab />}
+        {tab==='stock'      && <StockTab />}
+        {tab==='recipes'    && <RecipesTab />}
+        {tab==='shop'       && <ShoppingTab />}
+        {tab==='planning'   && <PlanningTab />}
+        {tab==='historique' && <HistoriqueTab />}
       </main>
     </div>
   )
