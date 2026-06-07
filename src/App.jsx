@@ -931,9 +931,22 @@ function ShoppingTab() {
     const bought = hasPack ? qty * restockItem.pack_size : qty
     await supabase.from('items').update({ quantity: restockItem.quantity + bought }).eq('id', restockItem.id)
     setChecked(p => ({...p, [restockItem.id]: false}))
-    // Retirer de la liste manuelle si applicable
-    if (restockManualId) {
-      saveManual(manualItems.filter(m => m.id !== restockManualId))
+    if (restockManualId) saveManual(manualItems.filter(m => m.id !== restockManualId))
+    // Enregistrer l'achat dans l'historique local
+    if (restockItem.price != null && qty > 0) {
+      const displayUnit = hasPack ? restockItem.pack_label : restockItem.unit
+      const totalCost = restockItem.price * qty
+      const purchase = {
+        id: crypto.randomUUID(),
+        name: restockItem.name,
+        qty,
+        unit: displayUnit,
+        unitPrice: restockItem.price,
+        totalCost,
+        date: new Date().toISOString(),
+      }
+      const prev = JSON.parse(localStorage.getItem('purchaseHistory') || '[]')
+      localStorage.setItem('purchaseHistory', JSON.stringify([purchase, ...prev].slice(0, 300)))
     }
     setRestockItem(null)
     setRestockManualId(null)
@@ -1593,6 +1606,9 @@ function PlanningTab() {
 function HistoriqueTab() {
   const [history, setHistory] = useState([])
   const [loading, setLoading] = useState(true)
+  const [purchases, setPurchases] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('purchaseHistory') || '[]') } catch { return [] }
+  })
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -1635,14 +1651,31 @@ function HistoriqueTab() {
     load()
   }
 
-  // Grouper par date
-  const grouped = {}
+  const deletePurchase = (id) => {
+    const updated = purchases.filter(p => p.id !== id)
+    setPurchases(updated)
+    localStorage.setItem('purchaseHistory', JSON.stringify(updated))
+  }
+
+  // Grouper repas par date
+  const mealGrouped = {}
   for (const h of history) {
     const date = (h.used_at || '').slice(0,10)
-    if (!grouped[date]) grouped[date] = []
-    grouped[date].push(h)
+    if (!mealGrouped[date]) mealGrouped[date] = []
+    mealGrouped[date].push(h)
   }
-  const dates = Object.keys(grouped).sort((a,b) => b.localeCompare(a))
+  const mealDates = Object.keys(mealGrouped).sort((a,b) => b.localeCompare(a))
+
+  // Grouper achats par date
+  const buyGrouped = {}
+  for (const p of purchases) {
+    const date = (p.date || '').slice(0,10)
+    if (!buyGrouped[date]) buyGrouped[date] = []
+    buyGrouped[date].push(p)
+  }
+  const buyDates = Object.keys(buyGrouped).sort((a,b) => b.localeCompare(a))
+
+  const fmtDate = (iso) => new Date(iso + 'T12:00:00').toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long' })
 
   return (
     <div className="tab-content">
@@ -1651,30 +1684,54 @@ function HistoriqueTab() {
         <button className="btn-sec" onClick={load}><I d={IC.refresh} s={15} /> Actualiser</button>
       </div>
 
-      {loading ? <div className="loading"><span className="spin" /></div> :
-        history.length === 0 ? (
-          <div className="empty">
-            <I d={IC.history} s={36} />
-            <p>Aucun repas cuisiné pour l'instant</p>
-          </div>
-        ) : (
-          <div className="hist-list">
-            {dates.map(date => (
+      {/* Courses effectuées */}
+      <div className="hist-section-title">🛒 Courses effectuées</div>
+      {purchases.length === 0 ? (
+        <p className="hist-empty">Aucun achat enregistré — les prix s'enregistrent à partir du prochain "Acheté".</p>
+      ) : (
+        <div className="hist-list">
+          {buyDates.map(date => {
+            const dayTotal = buyGrouped[date].reduce((s, p) => s + (p.totalCost || 0), 0)
+            return (
               <div key={date} className="hist-group">
                 <div className="hist-group-date">
-                  {new Date(date + 'T12:00:00').toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long', year:'numeric' })}
+                  {fmtDate(date)}
+                  <span className="hist-day-total">{dayTotal.toFixed(2)} €</span>
                 </div>
-                {grouped[date].map(h => (
+                {buyGrouped[date].map(p => (
+                  <div key={p.id} className="hist-row">
+                    <div className="hist-left">
+                      <span className="hist-name">{p.name}</span>
+                      <span className="hist-date">{p.qty} {p.unit} × {p.unitPrice?.toFixed(2)} € = <b>{p.totalCost?.toFixed(2)} €</b></span>
+                    </div>
+                    <button className="icon-btn sm danger" onClick={() => deletePurchase(p.id)} title="Supprimer">
+                      <I d={IC.trash} s={13} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Repas cuisinés */}
+      <div className="hist-section-title" style={{marginTop:24}}>🍳 Repas cuisinés</div>
+      {loading ? <div className="loading"><span className="spin" /></div> :
+        history.length === 0 ? (
+          <p className="hist-empty">Aucun repas cuisiné pour l'instant.</p>
+        ) : (
+          <div className="hist-list">
+            {mealDates.map(date => (
+              <div key={date} className="hist-group">
+                <div className="hist-group-date">{fmtDate(date)}</div>
+                {mealGrouped[date].map(h => (
                   <div key={h.id} className="hist-row">
                     <div className="hist-left">
                       <span className="hist-name">{h.recipe_name}</span>
-                      {h.used_at && (
-                        <span className="hist-date">
-                          {new Date(h.used_at).toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' })}
-                        </span>
-                      )}
+                      {h.used_at && <span className="hist-date">{new Date(h.used_at).toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit'})}</span>}
                     </div>
-                    <button className="btn-sec sm" onClick={() => undoCook(h)} title="Annuler et remettre les ingrédients dans le stock">
+                    <button className="btn-sec sm" onClick={() => undoCook(h)} title="Annuler et remettre les ingrédients">
                       <I d={IC.refresh} s={13} /> Annuler
                     </button>
                   </div>
