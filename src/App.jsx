@@ -360,8 +360,10 @@ function PackForm({ form, setForm }) {
 // Helper dates de péremption
 function expiryBadge(expiryDate) {
   if (!expiryDate) return null
-  const today = new Date(); today.setHours(0,0,0,0)
-  const exp = new Date(expiryDate + 'T00:00:00')
+  const t = new Date()
+  const today = new Date(t.getFullYear(), t.getMonth(), t.getDate())
+  const [ey, em, ed] = expiryDate.slice(0,10).split('-').map(Number)
+  const exp = new Date(ey, em - 1, ed)
   const diff = Math.round((exp - today) / 86400000)
   if (diff < 0)  return { label: 'Expiré ⚠️', cls: 'expired' }
   if (diff === 0) return { label: "Expire auj.", cls: 'expires-today' }
@@ -1302,8 +1304,9 @@ const DAYS_FR   = ['Lu','Ma','Me','Je','Ve','Sa','Di']
 const MEAL_TYPES = ['Petit-déjeuner','Déjeuner','Dîner','Snack','Autre']
 
 function PlanningTab() {
-  const todayStr = new Date().toISOString().slice(0,10)
-  const today = new Date(todayStr + 'T00:00:00')
+  const _t = new Date()
+  const todayStr = `${_t.getFullYear()}-${String(_t.getMonth()+1).padStart(2,'0')}-${String(_t.getDate()).padStart(2,'0')}`
+  const today = new Date(_t.getFullYear(), _t.getMonth(), _t.getDate())
 
   const [current, setCurrent] = useState(() => { const d = new Date(); d.setDate(1); d.setHours(0,0,0,0); return d })
   const [mealPlan, setMealPlan] = useState([])
@@ -1315,7 +1318,7 @@ function PlanningTab() {
   const [planForm, setPlanForm] = useState({ recipe_name:'', meal_type:'Dîner', notes:'' })
   const [selRecipeId, setSelRecipeId] = useState('')
 
-  const dStr = (d) => d.toISOString().slice(0,10)
+  const dStr = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
 
   const load = useCallback(async () => {
     setLoading(true)
